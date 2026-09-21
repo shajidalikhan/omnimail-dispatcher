@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OmniMail Dispatcher &bull; Intelligent Multi-Recipient Email Platform</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <!-- Header & Top Nav -->
+  <header class="app-header">
+    <div class="brand-container">
+      <div class="brand-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="m22 2-7 20-4-9-9-4Z"/>
+          <path d="M22 2 11 13"/>
+        </svg>
+      </div>
+      <div>
+        <h1 class="brand-title">OmniMail <span>Dispatcher</span></h1>
+        <p class="brand-subtitle">Smart Personalization, High-Deliverability Queue & Live Verification</p>
+      </div>
+    </div>
+    <div class="header-status-badge" id="dispatcher-quick-badge">
+      <span class="status-dot"></span>
+      <span id="header-dispatcher-name">Gmail SMTP</span>
+    </div>
+  </header>
+
+  <!-- Step Navigation Wizard -->
+  <nav class="wizard-nav">
+    <div class="wizard-step active" id="step-nav-1" onclick="switchStep(1)">
+      <div class="step-num">1</div>
+      <div class="step-info">
+        <span class="step-title">Dispatcher & Key</span>
+        <span class="step-desc">Mail ID & credentials</span>
+      </div>
+    </div>
+    <div class="step-divider"></div>
+    <div class="wizard-step" id="step-nav-2" onclick="switchStep(2)">
+      <div class="step-num">2</div>
+      <div class="step-info">
+        <span class="step-title">Import Recipients</span>
+        <span class="step-desc">Excel, CSV, or paste</span>
+      </div>
+    </div>
+    <div class="step-divider"></div>
+    <div class="wizard-step" id="step-nav-3" onclick="switchStep(3)">
+      <div class="step-num">3</div>
+      <div class="step-info">
+        <span class="step-title">Template & Guide</span>
+        <span class="step-desc">Personalization studio</span>
+      </div>
+    </div>
+    <div class="step-divider"></div>
+    <div class="wizard-step" id="step-nav-4" onclick="switchStep(4)">
+      <div class="step-num">4</div>
+      <div class="step-info">
+        <span class="step-title">Dispatch & Verify</span>
+        <span class="step-desc">Real-time status & export</span>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Container -->
+  <main class="main-content">
+
+    <!-- STEP 1: DISPATCHER & KEY SETUP -->
+    <section class="step-panel active" id="panel-step-1">
+      <div class="panel-header">
+        <div>
+          <h2>Step 1: Choose Dispatcher & Add Mail Key</h2>
+          <p class="panel-desc">Configure your sending email address, select an SMTP service, and securely provide your App Password or Mail Key.</p>
+        </div>
+      </div>
+
+      <div class="grid-2-col">
+        <!-- Configuration Card -->
+        <div class="card config-card">
+          <h3 class="card-title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+            Sender Identity & SMTP Dispatcher
+          </h3>
+
+          <div class="form-group">
+            <label for="dispatcher-type">Select Mail Dispatcher</label>
+            <select id="dispatcher-type" class="form-control" onchange="onDispatcherChange()">
+              <option value="gmail">Gmail SMTP (Recommended for Google Accounts)</option>
+              <option value="outlook">Outlook / Office 365 (Microsoft)</option>
+              <option value="yahoo">Yahoo Mail</option>
+              <option value="custom">Custom / Institutional SMTP Server</option>
+              <option value="dry_run">Dry Run / Simulation (Safe Sandbox Mode)</option>
+            </select>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label for="sender-email">Sender Mail ID (From Address)</label>
+              <input type="email" id="sender-email" class="form-control" placeholder="e.g. yourname@gmail.com" />
+            </div>
+            <div class="form-group flex-1">
+              <label for="sender-name">Sender Display Name</label>
+              <input type="text" id="sender-name" class="form-control" placeholder="e.g. Prof. / Dr. Your Name" />
+            </div>
+          </div>
+
+          <!-- Secret Key / App Password Space -->
+          <div class="form-group key-container">
+            <div class="label-with-badge">
+              <label for="sender-key">Mail Key / App Password</label>
+              <span class="security-badge">🔒 Zero-Retention: Memory Only</span>
+            </div>
+            <div class="input-with-button">
+              <input type="password" id="sender-key" class="form-control code-font" placeholder="Enter 16-character App Password or Mail Key" />
+              <button type="button" class="btn btn-secondary icon-btn" id="toggle-key-btn" onclick="toggleKeyVisibility()" title="Show/Hide Key">
+                <svg id="eye-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+              </button>
+            </div>
+            <p class="input-hint" id="key-hint">Zero-Retention Security: Your key is processed purely in volatile memory during dispatch and is NEVER saved to the server disk.</p>
+          </div>
+
+          <!-- Custom SMTP fields (hidden unless custom selected) -->
+          <div id="custom-smtp-fields" class="hidden-panel">
+            <div class="form-row">
+              <div class="form-group flex-2">
+                <label for="custom-host">SMTP Host Server</label>
+                <input type="text" id="custom-host" class="form-control" placeholder="mail.university.edu" />
+              </div>
+              <div class="form-group flex-1">
+                <label for="custom-port">Port</label>
+                <input type="number" id="custom-port" class="form-control" value="587" />
+              </div>
+            </div>
+            <div class="form-group checkbox-group">
+              <label>
+                <input type="checkbox" id="custom-tls" checked /> Use STARTTLS / Secure SSL
+              </label>
+            </div>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="btn-row mt-4">
+            <button type="button" class="btn btn-primary" onclick="saveCredentials()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              Remember on this Tab
+            </button>
+            <button type="button" class="btn btn-secondary" onclick="clearSessionCredentials()" title="Wipe key from browser memory">
+              Wipe Key
+            </button>
+            <button type="button" class="btn btn-outline" onclick="openTestEmailModal()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 13V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v12c0 1.1.9 2 2 2h9"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/><path d="m16 19 2 2 4-4"/></svg>
+              Send Single Test Email
+            </button>
+            <button type="button" class="btn btn-gradient ml-auto" onclick="switchStep(2)">
+              Proceed to Import Recipients &rarr;
+            </button>
+          </div>
+        </div>
+
+        <!-- Instructions & Security Guide Card -->
+        <div class="card guide-card">
+          <h3 class="card-title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+            How to Get Your Mail Key
+          </h3>
+
+          <div class="instruction-box">
+            <div class="instruction-tag">Google / Gmail Guide</div>
+            <ol class="styled-steps">
+              <li>Log in to your <strong>Google Account</strong> (myaccount.google.com).</li>
+              <li>Go to the <strong>Security</strong> tab and ensure <strong>2-Step Verification</strong> is ON.</li>
+              <li>Search for <strong>"App Passwords"</strong> or visit <code>myaccount.google.com/apppasswords</code>.</li>
+              <li>Name it <em>"OmniMail Dispatcher"</em> and click <strong>Create</strong>.</li>
+              <li>Copy the generated <strong>16-character passcode</strong> (e.g. <code>abcd efgh ijkl mnop</code>) and paste it into the key box on the left.</li>
+            </ol>
+          </div>
+
+          <div class="instruction-box mt-3">
+            <div class="instruction-tag tag-blue">Safe Mode / Dry Run</div>
+            <p class="guide-text">
+              Want to test templates and recipient mapping first without emailing anyone? Select <strong>Dry Run / Simulation</strong> in the dispatcher dropdown. It checks validation, generates full previews, and creates output status sheets completely safely!
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- STEP 2: RECIPIENT DATA INGESTION -->
+    <section class="step-panel" id="panel-step-2">
+      <div class="panel-header">
+        <div>
+          <h2>Step 2: Import & Validate Recipients</h2>
+          <p class="panel-desc">Upload recipient data from Excel, CSV, TSV, JSON, or paste text. We will automatically detect email fields and sanitize duplicates.</p>
+        </div>
+        <button type="button" class="btn btn-secondary" onclick="loadSampleData()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Load Built-in Sample Dataset
+        </button>
+      </div>
+
+      <!-- Ingestion Tabs -->
+      <div class="tabs-container">
+        <button class="tab-btn active" id="tab-upload-btn" onclick="switchDataTab('upload')">Upload File (Excel / CSV / JSON)</button>
+        <button class="tab-btn" id="tab-paste-btn" onclick="switchDataTab('paste')">Paste Text / Emails</button>
+      </div>
+
+      <!-- File Drop Zone -->
+      <div id="data-tab-upload" class="data-tab-content active">
+        <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+          <input type="file" id="file-input" class="hidden-input" accept=".xlsx,.xls,.csv,.tsv,.json,.txt" onchange="handleFileSelect(event)" />
+          <div class="drop-icon">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 12 15 15"/></svg>
+          </div>
+          <h3>Drag & Drop your Recipient File here</h3>
+          <p class="drop-hint">Supports Microsoft Excel (<strong>.xlsx, .xls</strong>), <strong>.csv</strong>, <strong>.tsv</strong>, or <strong>.json</strong></p>
+          <button type="button" class="btn btn-outline mt-2" onclick="event.stopPropagation(); document.getElementById('file-input').click()">
+            Browse Computer Files
+          </button>
+        </div>
+      </div>
+
+      <!-- Raw Paste Area -->
+      <div id="data-tab-paste" class="data-tab-content">
+        <div class="card">
+          <label for="paste-input">Paste emails (comma, newline, or tab separated):</label>
+          <textarea id="paste-input" class="form-control code-font" rows="7" placeholder="Name, Email, University&#10;Dr. Alan Turing, alan@cambridge.ac.uk, Cambridge&#10;Ada Lovelace, ada@lovelace.org, London"></textarea>
+          <div class="mt-3">
+            <button type="button" class="btn btn-primary" onclick="submitPastedData()">Parse Pasted Data</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Validation & Column Mapping Dashboard -->
+      <div id="data-summary-section" class="data-summary-section hidden-panel">
+        <!-- Stat Badges -->
+        <div class="stats-row">
+          <div class="stat-card">
+            <span class="stat-label">Total Rows Loaded</span>
+            <span class="stat-value" id="stat-total">0</span>
+          </div>
+          <div class="stat-card stat-success">
+            <span class="stat-label">Valid Recipients</span>
+            <span class="stat-value" id="stat-valid">0</span>
+          </div>
+          <div class="stat-card stat-danger">
+            <span class="stat-label">Invalid Emails</span>
+            <span class="stat-value" id="stat-invalid">0</span>
+          </div>
+          <div class="stat-card stat-warning">
+            <span class="stat-label">Duplicates Filtered</span>
+            <span class="stat-value" id="stat-duplicate">0</span>
+          </div>
+        </div>
+
+        <!-- Column Selection Card -->
+        <div class="card mt-3">
+          <div class="form-row align-center">
+            <div class="form-group flex-1 mb-0">
+              <label for="email-column-select">Target Email Address Column:</label>
+              <select id="email-column-select" class="form-control" onchange="changeEmailColumn()"></select>
+            </div>
+            <div class="column-badge-group">
+              <span class="badge badge-auto" id="auto-detected-badge">Auto-detected</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Data Preview Table -->
+        <div class="card mt-3">
+          <div class="table-header-row">
+            <h3 class="card-title">Recipient Dataset Preview (First 5 Rows)</h3>
+            <span class="table-count" id="table-row-count">Showing 5 rows</span>
+          </div>
+          <div class="table-responsive">
+            <table class="data-table" id="preview-table">
+              <thead id="preview-table-head"></thead>
+              <tbody id="preview-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Bottom Action -->
+        <div class="btn-row mt-4">
+          <button type="button" class="btn btn-secondary" onclick="switchStep(1)">&larr; Back to Step 1</button>
+          <button type="button" class="btn btn-gradient ml-auto" onclick="switchStep(3)">
+            Proceed to Personalization Studio &rarr;
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- STEP 3: TEMPLATE & PERSONALIZATION STUDIO -->
+    <section class="step-panel" id="panel-step-3">
+      <div class="panel-header">
+        <div>
+          <h2>Step 3: Personalization Studio & Guidelines</h2>
+          <p class="panel-desc">Craft your subject line and email body. Insert dynamic recipient variables, follow outreach best practices, and run pre-flight spam checks.</p>
+        </div>
+        <div class="score-container">
+          <span class="score-label">Deliverability Score:</span>
+          <span class="score-badge score-good" id="hygiene-score">100 / 100</span>
+        </div>
+      </div>
+
+      <div class="grid-studio">
+        <!-- Editor Left Column -->
+        <div class="studio-editor-column">
+          <!-- Dynamic Variable Chips -->
+          <div class="card variable-chips-card">
+            <div class="chips-header">
+              <span class="chips-title">Available Personalization Variables (Click to Insert):</span>
+              <span class="chips-sub">Populated from your dataset</span>
+            </div>
+            <div class="chips-container" id="variable-chips">
+              <button class="chip" onclick="insertVariable('{{Name}}')">+ {{Name}}</button>
+              <button class="chip" onclick="insertVariable('{{University}}')">+ {{University}}</button>
+              <button class="chip" onclick="insertVariable('{{Research_Area}}')">+ {{Research_Area}}</button>
+              <button class="chip" onclick="insertVariable('{{Email}}')">+ {{Email}}</button>
+            </div>
+          </div>
+
+          <!-- Subject Line Editor -->
+          <div class="card mt-3">
+            <div class="label-with-badge">
+              <label for="template-subject">Email Subject Line</label>
+              <span class="char-count" id="subject-char-count">48 chars</span>
+            </div>
+            <input type="text" id="template-subject" class="form-control" oninput="onTemplateContentChanged()" placeholder="Inquiry regarding {{Research_Area}} - {{University}}" />
+          </div>
+
+          <!-- Email Body Editor -->
+          <div class="card mt-3">
+            <div class="body-editor-header">
+              <label for="template-body">Email Body (HTML / Rich Text)</label>
+              <div class="editor-tools">
+                <button type="button" class="btn btn-tiny" onclick="insertFallbackSyntax()">Insert Fallback Syntax</button>
+                <button type="button" class="btn btn-tiny" onclick="resetDefaultTemplate()">Reset Template</button>
+              </div>
+            </div>
+            <textarea id="template-body" class="form-control code-font" rows="14" oninput="onTemplateContentChanged()"></textarea>
+          </div>
+
+          <!-- Attachments Card -->
+          <div class="card mt-3">
+            <div class="attachments-header">
+              <div class="label-with-badge mb-0">
+                <label for="attachment-input" class="mb-0">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 4px;"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                  Email Attachments (PDF, DOCX, XLSX, Images, ZIP)
+                </label>
+                <span class="attachment-size-badge" id="attachment-size-badge">0 files (0 KB / 25 MB max)</span>
+              </div>
+              <div class="mt-2">
+                <input type="file" id="attachment-input" class="hidden-input" multiple onchange="handleAttachmentUpload(event)" />
+                <button type="button" class="btn btn-secondary btn-tiny" onclick="document.getElementById('attachment-input').click()">
+                  + Attach File(s)
+                </button>
+              </div>
+            </div>
+            
+            <div class="attachment-chips-container mt-2" id="attachment-list">
+              <span class="text-dim" style="font-size: 0.78rem;" id="no-attachments-msg">No files attached yet. Click "+ Attach File(s)" to include documents.</span>
+            </div>
+          </div>
+
+          <!-- Hygiene Warnings Box -->
+          <div id="hygiene-warnings" class="hygiene-box hidden-panel mt-3"></div>
+        </div>
+
+        <!-- Right Column: Live Recipient Preview & Guidelines -->
+        <div class="studio-sidebar-column">
+          <!-- Live Preview Box -->
+          <div class="card preview-card">
+            <div class="preview-header">
+              <h3 class="card-title">Live Recipient Preview</h3>
+              <div class="preview-nav">
+                <button type="button" class="nav-arrow-btn" onclick="prevPreviewRecipient()">&larr;</button>
+                <span class="preview-counter" id="preview-index-counter">Recipient 1 of 5</span>
+                <button type="button" class="nav-arrow-btn" onclick="nextPreviewRecipient()">&rarr;</button>
+              </div>
+            </div>
+
+            <div class="preview-meta">
+              <div><strong>To:</strong> <span id="preview-to-email" class="mono-text">sarah.jenkins@stanford.edu</span></div>
+              <div><strong>Subject:</strong> <span id="preview-rendered-subject">Research Collaboration Inquiry - Stanford University</span></div>
+              <div id="preview-attachments-row" style="display: none;"><strong>Attachments:</strong> <span id="preview-attachments-text" class="text-muted">None</span></div>
+            </div>
+
+            <div class="rendered-email-window" id="preview-rendered-body">
+              <!-- Rendered preview appears here -->
+            </div>
+
+
+            <div class="preview-footer mt-3">
+              <button type="button" class="btn btn-outline btn-block" onclick="openTestEmailModal()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 13V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v12c0 1.1.9 2 2 2h9"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+                Send Test Email with This Preview
+              </button>
+            </div>
+          </div>
+
+          <!-- Personalization Guidance Accordion -->
+          <div class="card guide-accordion mt-3">
+            <h3 class="card-title">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              Personalization Best Practices
+            </h3>
+            <div class="guide-scroll" id="guidelines-container">
+              <!-- Dynamically populated from backend -->
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Navigation -->
+      <div class="btn-row mt-4">
+        <button type="button" class="btn btn-secondary" onclick="switchStep(2)">&larr; Back to Recipients</button>
+        <button type="button" class="btn btn-gradient ml-auto" onclick="switchStep(4)">
+          Review & Launch Dispatch &rarr;
+        </button>
+      </div>
+    </section>
+
+    <!-- STEP 4: DISPATCH, REAL-TIME TRACKING & EXPORT -->
+    <section class="step-panel" id="panel-step-4">
+      <div class="panel-header">
+        <div>
+          <h2>Step 4: Queued Dispatch & Verification Audit</h2>
+          <p class="panel-desc">Monitor real-time delivery status, throttle rate limits, inspect delivery errors, and export the verified report.</p>
+        </div>
+      </div>
+
+      <!-- Dispatch Controls & Launch Card -->
+      <div class="card dispatch-control-card">
+        <div class="dispatch-config-grid">
+          <div class="form-group mb-0">
+            <label for="throttle-delay">Delay Between Emails (Anti-Spam Throttling):</label>
+            <div class="slider-container">
+              <input type="range" id="throttle-delay" min="1" max="10" step="0.5" value="3" oninput="updateDelayDisplay(this.value)" />
+              <span class="slider-badge" id="delay-badge">3.0 seconds</span>
+            </div>
+          </div>
+
+          <div class="dispatch-summary-box">
+            <div><strong>Active Dispatcher:</strong> <span id="summary-dispatcher">Gmail SMTP</span></div>
+            <div><strong>Sender:</strong> <span id="summary-sender">Not configured</span></div>
+            <div><strong>Valid Queue Size:</strong> <span id="summary-count" class="badge badge-success">0 recipients</span></div>
+          </div>
+        </div>
+
+        <div class="btn-row mt-3">
+          <button type="button" class="btn btn-gradient btn-lg" id="start-dispatch-btn" onclick="startBatchDispatch()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            Launch Batch Dispatch
+          </button>
+          <button type="button" class="btn btn-secondary" id="pause-btn" onclick="togglePauseJob()" disabled>
+            Pause
+          </button>
+          <button type="button" class="btn btn-danger" id="stop-btn" onclick="stopJob()" disabled>
+            Stop Dispatch
+          </button>
+          <button type="button" class="btn btn-warning ml-auto" id="retry-failed-btn" onclick="retryFailedRecipients()" style="display: none;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
+            Retry Failed Recipients
+          </button>
+        </div>
+      </div>
+
+      <!-- Progress Section -->
+      <div class="card mt-3" id="progress-card">
+        <div class="progress-info-row">
+          <div class="status-indicator">
+            <span class="pulse-dot" id="progress-pulse"></span>
+            <span class="status-text" id="dispatch-status-text">Ready to Dispatch</span>
+          </div>
+          <div class="progress-numbers" id="progress-count-text">0 / 0 dispatched</div>
+        </div>
+
+        <div class="progress-bar-container">
+          <div class="progress-bar-fill" id="progress-bar" style="width: 0%"></div>
+        </div>
+
+        <div class="stats-row mt-3">
+          <div class="stat-card">
+            <span class="stat-label">Currently Delivering To</span>
+            <span class="stat-value mono-text" id="stat-current-recipient">-</span>
+          </div>
+          <div class="stat-card stat-success">
+            <span class="stat-label">Successfully Delivered</span>
+            <span class="stat-value" id="stat-sent-count">0</span>
+          </div>
+          <div class="stat-card stat-danger">
+            <span class="stat-label">Failed Deliveries</span>
+            <span class="stat-value" id="stat-failed-count">0</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Verification & Export Section -->
+      <div class="card mt-3">
+        <div class="export-header-row">
+          <div>
+            <h3 class="card-title">Export Verified Delivery Results</h3>
+            <p class="panel-desc">Download your dataset with added <code>Delivery_Status</code>, <code>Delivered_At</code>, and <code>Error_Reason</code> columns.</p>
+          </div>
+          <div class="btn-group">
+            <a href="/api/export-results?format=xlsx" class="btn btn-success" download>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Download Excel (.xlsx)
+            </a>
+            <a href="/api/export-results?format=csv" class="btn btn-outline" download>
+              Download CSV (.csv)
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Delivery Audit Log -->
+      <div class="card mt-3">
+        <h3 class="card-title">Live Delivery Activity Log</h3>
+        <div class="activity-log-window" id="activity-log-window">
+          <div class="log-entry log-info">[System] Dispatch engine initialized and awaiting commands.</div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Single Test Email Modal -->
+  <div class="modal-overlay" id="test-email-modal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Send Single Test Email</h3>
+        <button class="modal-close-btn" onclick="closeTestEmailModal()">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-desc">Verify your email credentials and check how the rendered email appears in your actual personal inbox before launching the mass dispatch.</p>
+        <div class="form-group">
+          <label for="modal-test-recipient">Recipient Email for Test:</label>
+          <input type="email" id="modal-test-recipient" class="form-control" placeholder="yourpersonalemail@domain.com" />
+        </div>
+        <div id="modal-test-result" class="alert-box hidden-panel"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeTestEmailModal()">Close</button>
+        <button type="button" class="btn btn-primary" id="modal-send-btn" onclick="dispatchTestEmail()">
+          Send Test Email
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>

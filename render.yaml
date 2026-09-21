@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: omnimail-dispatcher
+    env: python
+    region: oregon
+    plan: free
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "uvicorn backend.app:app --host 0.0.0.0 --port $PORT"
+    envVars:
+      - key: AUTH_ENABLED
+        value: "true"
+      - key: ADMIN_USERNAME
+        generateValue: false
+      - key: ADMIN_PASSWORD
+        generateValue: false
+      - key: DEFAULT_DISPATCHER
+        value: "gmail"
+      - key: SENDER_EMAIL
+        sync: false
+      - key: SENDER_NAME
+        sync: false
+      - key: SENDER_KEY
+        sync: false

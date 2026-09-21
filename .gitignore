@@ -1,0 +1,51 @@
+# ─── Secrets & Environment ─────────────────────────────────────────────────
+.env
+*.env
+!.env.example
+
+# ─── Python Cache ───────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# ─── Virtual Environments ───────────────────────────────────────────────────
+venv/
+.venv/
+env/
+ENV/
+
+# ─── OS Specific ────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ─── Exported Reports (generated at runtime) ────────────────────────────────
+dispatch_report_*.xlsx
+dispatch_report_*.csv
+
+# ─── Local / Dev-only files (NOT needed for deployment) ─────────────────────
+# Demo / test recipient files (not part of the deployable app)
+demo_recipients.csv
+demo_recipients.xlsx
+
+# Windows local launcher (render uses Procfile instead)
+start_dispatcher.bat
+start_dispatcher.py
+
+# Local sample data folder (only needed for local testing)
+sample_data/
+
+# IDE / Editor folders
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Pytest / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Uploaded attachment temp files (runtime only)
+uploads/
