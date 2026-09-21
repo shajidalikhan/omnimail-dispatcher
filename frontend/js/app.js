@@ -52,33 +52,28 @@ async function loadInitialConfig() {
     const res = await fetch("/api/config");
     appConfig = await res.json();
 
-    // Populate saved settings if any
     const saved = appConfig.saved || {};
+
+    // Pre-fill dispatcher
     if (saved.dispatcher_type) {
       document.getElementById("dispatcher-type").value = saved.dispatcher_type;
     }
-    
-    // Check client session storage first (Zero-Retention: client memory only)
-    const localEmail = sessionStorage.getItem("omnimail_email");
-    const localName = sessionStorage.getItem("omnimail_name");
-    const localKey = sessionStorage.getItem("omnimail_key");
 
-    if (localEmail) {
-      document.getElementById("sender-email").value = localEmail;
-    } else if (saved.sender_email) {
+    // LOCAL MODE: pre-fill all fields from server-saved .env credentials
+    if (saved.sender_email) {
       document.getElementById("sender-email").value = saved.sender_email;
     }
-
-    if (localName) {
-      document.getElementById("sender-name").value = localName;
-    } else if (saved.sender_name) {
+    if (saved.sender_name) {
       document.getElementById("sender-name").value = saved.sender_name;
     }
-
-    if (localKey) {
-      document.getElementById("sender-key").value = localKey;
+    // Pre-fill key from .env (local mode — single user machine only)
+    const keyFromEnv = saved.sender_key || sessionStorage.getItem("omnimail_key") || "";
+    if (keyFromEnv) {
+      document.getElementById("sender-key").value = keyFromEnv;
+      sessionStorage.setItem("omnimail_key", keyFromEnv);
     }
 
+    applyLocalModeUi(appConfig.local_mode !== false);
     if (saved.custom_smtp_server) {
       document.getElementById("custom-host").value = saved.custom_smtp_server;
     }
@@ -98,6 +93,7 @@ async function loadInitialConfig() {
     updateSummaryView();
   } catch (err) {
     console.error("Failed to load initial configuration:", err);
+
   }
 }
 
@@ -251,19 +247,52 @@ function toggleKeyVisibility() {
   input.type = input.type === "password" ? "text" : "password";
 }
 
-// Save credentials (Zero-Retention: client tab memory only)
-function saveCredentials() {
+function applyLocalModeUi(isLocal) {
+  document.querySelectorAll(".local-mode-only").forEach((el) => {
+    el.classList.toggle("hidden-panel", !isLocal);
+  });
+}
+
+// LOCAL MODE: Save credentials to server .env file for persistence across restarts
+async function saveCredentials() {
   const dType = document.getElementById("dispatcher-type").value;
   const sEmail = document.getElementById("sender-email").value.trim();
   const sName = document.getElementById("sender-name").value.trim();
   const sKey = document.getElementById("sender-key").value.trim();
+  const cHost = document.getElementById("custom-host")?.value.trim() || "";
+  const cPort = parseInt(document.getElementById("custom-port")?.value || "587");
+  const cTls = document.getElementById("custom-tls")?.checked ?? true;
 
-  sessionStorage.setItem("omnimail_dispatcher", dType);
-  sessionStorage.setItem("omnimail_email", sEmail);
-  sessionStorage.setItem("omnimail_name", sName);
-  sessionStorage.setItem("omnimail_key", sKey);
+  if (!sEmail || !sKey) {
+    alert("Please fill in your Sender Email and Mail Key before saving.");
+    return;
+  }
 
-  alert("🔒 Zero-Retention Active!\n\nYour Mail Key is stored ONLY in your current browser tab's volatile memory.\nIt will NEVER be written to the server's disk or database, and will automatically vanish when you close this browser tab.");
+  try {
+    const res = await fetch("/api/save-credentials", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        dispatcher_type: dType,
+        sender_email: sEmail,
+        sender_name: sName,
+        sender_key: sKey,
+        custom_smtp_server: cHost,
+        custom_smtp_port: cPort,
+        custom_use_tls: cTls
+      })
+    });
+    const data = await res.json();
+    if (data.success) {
+      // Also cache in sessionStorage for instant use
+      sessionStorage.setItem("omnimail_key", sKey);
+      alert("✅ Saved to .env!\n\n" + data.message);
+    } else {
+      alert("Failed to save: " + (data.message || "Unknown error"));
+    }
+  } catch (err) {
+    alert("Error saving credentials: " + err.message);
+  }
   updateSummaryView();
 }
 
@@ -272,7 +301,7 @@ function clearSessionCredentials() {
   sessionStorage.removeItem("omnimail_email");
   sessionStorage.removeItem("omnimail_name");
   document.getElementById("sender-key").value = "";
-  alert("Credentials wiped from browser tab memory.");
+  alert("Key cleared from browser memory.\n\nNote: The .env file on your machine still has the saved key. Delete it manually to fully remove it.");
 }
 
 
@@ -655,10 +684,13 @@ async function startBatchDispatch() {
 
   const dType = document.getElementById("dispatcher-type").value;
   const sEmail = document.getElementById("sender-email").value.trim();
-  const sKey = document.getElementById("sender-key").value.trim();
+  const sKey =
+    document.getElementById("sender-key").value.trim() ||
+    sessionStorage.getItem("omnimail_key") ||
+    "";
 
   if (dType !== "dry_run" && (!sEmail || !sKey)) {
-    return alert("Please configure your Sender Email and Mail Key / App Password in Step 1.");
+    return alert("Please configure your Sender Email and Mail Key / App Password in Step 1 (or Save to .env).");
   }
 
   const confirmed = confirm(`Are you sure you want to launch dispatch to ${totalRecipients} recipients using [${dType.toUpperCase()}]?`);

@@ -10,9 +10,10 @@ from pydantic import BaseModel
 
 from backend.config import (
     DISPATCHER_PRESETS,
+    LOCAL_MODE,
     get_saved_credentials,
     save_credentials_to_env,
-    get_auth_settings
+    get_auth_settings,
 )
 from backend.data_ingestion import (
     parse_uploaded_file,
@@ -166,25 +167,105 @@ class StartDispatchRequest(BaseModel):
     custom_use_tls: Optional[bool] = True
     save_settings: bool = False
 
+
+def _resolve_smtp_settings(
+    dispatcher_type: str,
+    sender_email: str,
+    sender_name: str,
+    sender_key: str,
+    custom_smtp_server: str = "",
+    custom_smtp_port: int = 587,
+    custom_use_tls: bool = True,
+) -> Dict[str, Any]:
+    """In local mode, fill missing fields from the on-disk .env file."""
+    if not LOCAL_MODE:
+        return {
+            "dispatcher_type": dispatcher_type,
+            "sender_email": sender_email,
+            "sender_name": sender_name,
+            "sender_key": sender_key,
+            "custom_smtp_server": custom_smtp_server or "",
+            "custom_smtp_port": custom_smtp_port or 587,
+            "custom_use_tls": custom_use_tls if custom_use_tls is not None else True,
+        }
+    saved = get_saved_credentials()
+    return {
+        "dispatcher_type": dispatcher_type or saved["dispatcher_type"],
+        "sender_email": sender_email or saved["sender_email"],
+        "sender_name": sender_name or saved["sender_name"],
+        "sender_key": sender_key or saved["sender_key"],
+        "custom_smtp_server": custom_smtp_server or saved["custom_smtp_server"],
+        "custom_smtp_port": custom_smtp_port or saved["custom_smtp_port"],
+        "custom_use_tls": (
+            custom_use_tls
+            if custom_use_tls is not None
+            else saved["custom_use_tls"]
+        ),
+    }
+
+
+def _maybe_persist_local_credentials(
+    dispatcher_type: str,
+    sender_email: str,
+    sender_name: str,
+    sender_key: str,
+    custom_smtp_server: str,
+    custom_smtp_port: int,
+    custom_use_tls: bool,
+    save_settings: bool,
+) -> None:
+    if not LOCAL_MODE or not save_settings:
+        return
+    if not sender_email or not sender_key:
+        return
+    save_credentials_to_env(
+        dispatcher_type=dispatcher_type,
+        sender_email=sender_email,
+        sender_name=sender_name,
+        password_or_key=sender_key,
+        smtp_server=custom_smtp_server or "",
+        smtp_port=custom_smtp_port or 587,
+        use_tls=custom_use_tls if custom_use_tls is not None else True,
+    )
+
+
 # API Routes
 @app.get("/api/config")
 def get_config():
     saved = get_saved_credentials()
-    # ZERO-RETENTION GUARANTEE: Never broadcast key over network
-    saved["sender_key"] = ""
+    if not LOCAL_MODE:
+        saved["sender_key"] = ""
     return {
         "presets": DISPATCHER_PRESETS,
         "saved": saved,
+        "local_mode": LOCAL_MODE,
         "default_subject": DEFAULT_SUBJECT,
         "default_body_html": DEFAULT_BODY_HTML,
         "default_body_text": DEFAULT_BODY_TEXT,
-        "guidelines": PERSONALIZATION_GUIDELINES
+        "guidelines": PERSONALIZATION_GUIDELINES,
     }
 
 @app.post("/api/save-credentials")
 def save_credentials(payload: SaveCredentialsRequest):
-    # Zero-Retention: In multi-user deployment, credentials are kept client-side only
-    return {"success": True, "message": "Zero-Retention active: Key will be held securely in client session memory only."}
+    if not LOCAL_MODE:
+        raise HTTPException(
+            status_code=403,
+            detail="Saving credentials to .env is only available in local deployment mode.",
+        )
+    save_credentials_to_env(
+        dispatcher_type=payload.dispatcher_type,
+        sender_email=payload.sender_email,
+        sender_name=payload.sender_name,
+        password_or_key=payload.sender_key,
+        smtp_server=payload.custom_smtp_server or "",
+        smtp_port=payload.custom_smtp_port or 587,
+        use_tls=payload.custom_use_tls if payload.custom_use_tls is not None else True,
+    )
+    return {
+        "success": True,
+        "message": "Settings saved to local .env file. Your credentials will be pre-filled automatically on the next restart."
+    }
+
 
 @app.post("/api/upload")
 async def upload_dataset(request: Request, file: UploadFile = File(...)):
@@ -369,18 +450,26 @@ def test_email(request: Request, payload: TestEmailRequest):
     session_data = get_session(session_id)
     atts = session_data.get("attachments", [])
 
-    # Directly executes single test over SMTP without writing key to disk
+    smtp = _resolve_smtp_settings(
+        payload.dispatcher_type,
+        payload.sender_email,
+        payload.sender_name,
+        payload.sender_key,
+        payload.custom_smtp_server or "",
+        payload.custom_smtp_port or 587,
+        payload.custom_use_tls if payload.custom_use_tls is not None else True,
+    )
     res = send_single_test_email(
-        dispatcher_type=payload.dispatcher_type,
-        sender_email=payload.sender_email,
-        sender_name=payload.sender_name,
-        sender_key=payload.sender_key,
+        dispatcher_type=smtp["dispatcher_type"],
+        sender_email=smtp["sender_email"],
+        sender_name=smtp["sender_name"],
+        sender_key=smtp["sender_key"],
         test_recipient_email=payload.test_recipient_email,
         subject=payload.subject,
         body_html=payload.body_html,
-        custom_server=payload.custom_smtp_server or "",
-        custom_port=payload.custom_smtp_port or 587,
-        use_tls=payload.custom_use_tls if payload.custom_use_tls is not None else True,
+        custom_server=smtp["custom_smtp_server"],
+        custom_port=smtp["custom_smtp_port"],
+        use_tls=smtp["custom_use_tls"],
         attachments=atts
     )
     return res
@@ -398,25 +487,51 @@ def start_dispatch(request: Request, payload: StartDispatchRequest):
     email_col = session_data.get("selected_email_col", "")
     atts = session_data.get("attachments", [])
 
-    # ZERO-RETENTION: We never write payload.sender_key to disk or .env!
-    # The key is passed directly to the ephemeral worker thread and wiped upon job finish.
+    smtp = _resolve_smtp_settings(
+        payload.dispatcher_type,
+        payload.sender_email,
+        payload.sender_name,
+        payload.sender_key,
+        payload.custom_smtp_server or "",
+        payload.custom_smtp_port or 587,
+        payload.custom_use_tls if payload.custom_use_tls is not None else True,
+    )
+    _maybe_persist_local_credentials(
+        smtp["dispatcher_type"],
+        smtp["sender_email"],
+        smtp["sender_name"],
+        smtp["sender_key"],
+        smtp["custom_smtp_server"],
+        smtp["custom_smtp_port"],
+        smtp["custom_use_tls"],
+        payload.save_settings,
+    )
+
     start_batch_dispatch_job(
         recipients=valid_recipients,
         email_column=email_col,
         subject_template=payload.subject_template,
         body_template=payload.body_template,
-        dispatcher_type=payload.dispatcher_type,
-        sender_email=payload.sender_email,
-        sender_name=payload.sender_name,
-        sender_key=payload.sender_key,
-        custom_server=payload.custom_smtp_server or "",
-        custom_port=payload.custom_smtp_port or 587,
-        use_tls=payload.custom_use_tls if payload.custom_use_tls is not None else True,
+        dispatcher_type=smtp["dispatcher_type"],
+        sender_email=smtp["sender_email"],
+        sender_name=smtp["sender_name"],
+        sender_key=smtp["sender_key"],
+        custom_server=smtp["custom_smtp_server"],
+        custom_port=smtp["custom_smtp_port"],
+        use_tls=smtp["custom_use_tls"],
         delay_seconds=payload.delay_seconds,
         session_id=session_id,
         attachments=atts
     )
-    return {"success": True, "message": f"Dispatch job started for {len(valid_recipients)} recipients with Zero-Retention security."}
+    mode_note = (
+        " Credentials synced to local .env."
+        if LOCAL_MODE and payload.save_settings
+        else ""
+    )
+    return {
+        "success": True,
+        "message": f"Dispatch job started for {len(valid_recipients)} recipients.{mode_note}",
+    }
 
 @app.get("/api/dispatch-status")
 def get_dispatch_status(request: Request):
@@ -449,18 +564,27 @@ def retry_failed(request: Request, payload: StartDispatchRequest):
 
     email_col = session_data.get("selected_email_col", "")
     atts = session_data.get("attachments", [])
+    smtp = _resolve_smtp_settings(
+        payload.dispatcher_type,
+        payload.sender_email,
+        payload.sender_name,
+        payload.sender_key,
+        payload.custom_smtp_server or "",
+        payload.custom_smtp_port or 587,
+        payload.custom_use_tls if payload.custom_use_tls is not None else True,
+    )
     start_batch_dispatch_job(
         recipients=failed_recs,
         email_column=email_col,
         subject_template=payload.subject_template,
         body_template=payload.body_template,
-        dispatcher_type=payload.dispatcher_type,
-        sender_email=payload.sender_email,
-        sender_name=payload.sender_name,
-        sender_key=payload.sender_key,
-        custom_server=payload.custom_smtp_server or "",
-        custom_port=payload.custom_smtp_port or 587,
-        use_tls=payload.custom_use_tls if payload.custom_use_tls is not None else True,
+        dispatcher_type=smtp["dispatcher_type"],
+        sender_email=smtp["sender_email"],
+        sender_name=smtp["sender_name"],
+        sender_key=smtp["sender_key"],
+        custom_server=smtp["custom_smtp_server"],
+        custom_port=smtp["custom_smtp_port"],
+        use_tls=smtp["custom_use_tls"],
         delay_seconds=payload.delay_seconds,
         session_id=session_id,
         attachments=atts
