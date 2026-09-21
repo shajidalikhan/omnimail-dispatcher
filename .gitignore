@@ -25,7 +25,7 @@ dispatch_report_*.xlsx
 dispatch_report_*.csv
 
 # ─── Local / Dev-only files (NOT needed for deployment) ─────────────────────
-# Demo / test recipient files (not part of the deployable app)
+# Demo / test recipient files
 demo_recipients.csv
 demo_recipients.xlsx
 
@@ -33,7 +33,7 @@ demo_recipients.xlsx
 start_dispatcher.bat
 start_dispatcher.py
 
-# Local sample data folder (only needed for local testing)
+# Local sample data folder
 sample_data/
 
 # IDE / Editor folders
@@ -42,10 +42,11 @@ sample_data/
 *.swp
 *.swo
 
-# Pytest / coverage
+# ─── Pytest / coverage ───────────────────────────────────────────────────────
 .pytest_cache/
 .coverage
 htmlcov/
 
-# Uploaded attachment temp files (runtime only)
+# ─── Uploaded attachment temp files (runtime only) ───────────────────────────
 uploads/
+
