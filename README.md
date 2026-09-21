@@ -35,6 +35,8 @@
 
 ## Quick Start Guide
 
+**New install from GitHub?** See **[LOCAL_DEPLOYMENT.md](LOCAL_DEPLOYMENT.md)** for clone → `.env` → run steps on the `local-deployment` branch.
+
 ### Option 1: Double-Click Launcher (Windows)
 Double-click `start_dispatcher.bat` in this folder.
 
