@@ -11,6 +11,7 @@ from pydantic import BaseModel
 from backend.config import (
     DISPATCHER_PRESETS,
     LOCAL_MODE,
+    is_local_mode,
     get_saved_credentials,
     save_credentials_to_env,
     get_auth_settings,
@@ -214,7 +215,7 @@ def _maybe_persist_local_credentials(
     custom_use_tls: bool,
     save_settings: bool,
 ) -> None:
-    if not LOCAL_MODE or not save_settings:
+    if not is_local_mode() or not save_settings:
         return
     if not sender_email or not sender_key:
         return
@@ -232,13 +233,14 @@ def _maybe_persist_local_credentials(
 # API Routes
 @app.get("/api/config")
 def get_config():
+    local_active = is_local_mode()
     saved = get_saved_credentials()
-    if not LOCAL_MODE:
+    if not local_active:
         saved["sender_key"] = ""
     return {
         "presets": DISPATCHER_PRESETS,
         "saved": saved,
-        "local_mode": LOCAL_MODE,
+        "local_mode": local_active,
         "default_subject": DEFAULT_SUBJECT,
         "default_body_html": DEFAULT_BODY_HTML,
         "default_body_text": DEFAULT_BODY_TEXT,
@@ -247,7 +249,7 @@ def get_config():
 
 @app.post("/api/save-credentials")
 def save_credentials(payload: SaveCredentialsRequest):
-    if not LOCAL_MODE:
+    if not is_local_mode():
         raise HTTPException(
             status_code=403,
             detail="Saving credentials to .env is only available in local deployment mode.",
@@ -525,7 +527,7 @@ def start_dispatch(request: Request, payload: StartDispatchRequest):
     )
     mode_note = (
         " Credentials synced to local .env."
-        if LOCAL_MODE and payload.save_settings
+        if is_local_mode() and payload.save_settings
         else ""
     )
     return {

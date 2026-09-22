@@ -5,12 +5,17 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parent.parent
 ENV_PATH = BASE_DIR / ".env"
 
-# ── LOCAL DEPLOYMENT MODE ────────────────────────────────────────────────────
-# In local-deployment mode credentials (including the key) are persisted to
-# the local .env file so users don't retype them on every restart.
-# This is safe because only YOU run this server on your own machine.
-# Do NOT use this branch on a public/shared server.
-LOCAL_MODE = True
+# ── DEPLOYMENT MODE CONFIGURATION ────────────────────────────────────────────
+# When LOCAL_MODE is enabled (e.g. launched via run_local.py or start_local.bat),
+# credentials including the mail key are persisted to the local .env file so users
+# on their personal machines do not have to re-enter them on every launch.
+# When LOCAL_MODE is false (e.g. Cloud / Render / Multi-user hosting), the key is
+# NEVER written to disk or sent to the client (Strict Zero-Retention Security).
+def is_local_mode() -> bool:
+    """Check if server is running in single-machine local mode."""
+    return os.getenv("LOCAL_MODE", "false").strip().lower() in ("true", "1", "yes")
+
+LOCAL_MODE = is_local_mode()
 
 if ENV_PATH.exists():
     load_dotenv(ENV_PATH)
@@ -84,7 +89,7 @@ def save_credentials_to_env(
         "DEFAULT_DISPATCHER": dispatcher_type,
         "SENDER_EMAIL": sender_email,
         "SENDER_NAME": sender_name,
-        "SENDER_KEY": password_or_key,
+        "SENDER_KEY": password_or_key if LOCAL_MODE else "",
         "CUSTOM_SMTP_SERVER": smtp_server,
         "CUSTOM_SMTP_PORT": str(smtp_port),
         "CUSTOM_USE_TLS": str(use_tls).lower(),
@@ -140,9 +145,9 @@ def get_auth_settings():
 
 def get_saved_credentials():
     """
-    LOCAL MODE: Return all credentials including the key from .env.
-    The key is returned so the UI pre-fills it on page load — the user
-    never has to retype their App Password after the first save.
+    Return saved credentials from .env.
+    In LOCAL_MODE, the key is included so the UI pre-fills it for single-machine convenience.
+    In Cloud/Shared mode, the key is NEVER exposed (Zero-Retention Policy).
     """
     if ENV_PATH.exists():
         load_dotenv(ENV_PATH, override=True)
@@ -150,7 +155,7 @@ def get_saved_credentials():
         "dispatcher_type": os.getenv("DEFAULT_DISPATCHER", "gmail"),
         "sender_email": os.getenv("SENDER_EMAIL", ""),
         "sender_name": os.getenv("SENDER_NAME", ""),
-        "sender_key": os.getenv("SENDER_KEY", ""),  # LOCAL MODE: returned to pre-fill UI
+        "sender_key": os.getenv("SENDER_KEY", "") if LOCAL_MODE else "",
         "custom_smtp_server": os.getenv("CUSTOM_SMTP_SERVER", ""),
         "custom_smtp_port": int(os.getenv("CUSTOM_SMTP_PORT", "587")),
         "custom_use_tls": os.getenv("CUSTOM_USE_TLS", "true").lower() == "true",

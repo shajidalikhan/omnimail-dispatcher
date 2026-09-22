@@ -13,9 +13,9 @@ Follow this step-by-step guide to deploy your **OmniMail Dispatcher** applicatio
 
 ## Step 1: Initialize Git and Push to GitHub
 
-1. Open your terminal or Command Prompt in the `email dispatcher` folder:
+1. Open your terminal or Command Prompt in the project folder:
    ```bash
-   cd "d:\Study Material\Computer Science and Application\M.Tech\Semester 3\TA Work\email dispatcher"
+   cd omnimail-dispatcher
    ```
 
 2. Initialize a Git repository (your `.gitignore` file already prevents passwords and `.env` from being uploaded):

@@ -1,8 +1,8 @@
 # Local Deployment Guide (Clone → Run)
 
-Use this guide to install **OmniMail Dispatcher** on your own computer from GitHub. This flow uses the **`local-deployment`** branch: SMTP credentials are stored in a **`.env`** file on your machine (never committed to Git).
+Use this guide to run **OmniMail Dispatcher** locally on your personal computer directly from the **`main`** branch. In local mode, your SMTP credentials and App Passwords are saved to your private **`.env`** file so you never have to re-enter them on each launch.
 
-For cloud hosting on Render, use [DEPLOYMENT_RENDER.md](DEPLOYMENT_RENDER.md) and the **`main`** branch instead.
+> **Cloud Hosting:** For multi-user hosting on Render with Zero-Retention security (where keys are kept in browser memory only and never saved to disk), see [DEPLOYMENT_RENDER.md](DEPLOYMENT_RENDER.md).
 
 ---
 
@@ -11,161 +11,108 @@ For cloud hosting on Render, use [DEPLOYMENT_RENDER.md](DEPLOYMENT_RENDER.md) an
 | Requirement | Notes |
 |-------------|--------|
 | **Git** | [git-scm.com/downloads](https://git-scm.com/downloads) |
-| **Python 3.10+** | Check with `python --version` |
-| **Internet** | To clone the repo and install packages (SMTP still uses your mail provider when sending) |
+| **Python 3.10+** | Check with `python --version` (be sure to check "Add Python to PATH" during install) |
+| **Internet** | For package installation and connecting to your SMTP mail provider |
 
 ---
 
-## Step 1: Clone the repository
+## Fast Track (Windows 1-Click Launch)
 
-Open **PowerShell**, **Command Prompt**, or **Terminal** and run:
+1. **Clone the repository:**
+   ```cmd
+   git clone https://github.com/shajidalikhan/omnimail-dispatcher.git
+   cd omnimail-dispatcher
+   ```
+2. **Double-click `start_local.bat`** (or `start_dispatcher.bat`).
+3. That's it! It launches the local server and automatically opens your browser at `http://127.0.0.1:8000`.
+
+---
+
+## Step-by-Step Setup (All Platforms)
+
+### Step 1: Clone the repository
 
 ```bash
 git clone https://github.com/shajidalikhan/omnimail-dispatcher.git
 cd omnimail-dispatcher
 ```
 
-Switch to the local-deployment branch:
-
-```bash
-git checkout local-deployment
-```
-
----
-
-## Step 2: Create a virtual environment (recommended)
+### Step 2: Create a virtual environment (recommended)
 
 **Windows (PowerShell):**
-
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 ```
 
 **Windows (Command Prompt):**
-
 ```cmd
 python -m venv .venv
 .venv\Scripts\activate.bat
 ```
 
 **macOS / Linux:**
-
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 ```
 
----
+### Step 3: Install dependencies
 
-## Step 3: Install dependencies
-
-With the virtual environment activated:
-
+With your virtual environment activated:
 ```bash
 pip install -r requirements.txt
 ```
 
----
-
-## Step 4: Configure credentials (`.env`)
-
-Copy the example file and edit it with your details:
-
-**Windows:**
-
-```powershell
-copy .env.example .env
-notepad .env
-```
-
-**macOS / Linux:**
-
-```bash
-cp .env.example .env
-nano .env   # or use any text editor
-```
-
-Example values:
-
-```env
-DEFAULT_DISPATCHER=gmail
-SENDER_EMAIL=your.email@gmail.com
-SENDER_NAME=Prof. / Dr. Your Name
-SENDER_KEY=your_16_character_app_password
-CUSTOM_SMTP_SERVER=
-CUSTOM_SMTP_PORT=587
-CUSTOM_USE_TLS=true
-```
-
-**Gmail:** use a [Google App Password](https://myaccount.google.com/apppasswords), not your normal Gmail password.
-
-You can also leave `.env` empty at first and fill credentials in the web UI, then click **Save to .env (Local)**.
-
-> **Important:** `.env` is listed in `.gitignore`. Do not commit it or share it.
-
----
-
-## Step 5: Run the application
-
-From the project folder (venv activated):
+### Step 4: Run the application
 
 ```bash
 python run_local.py
 ```
 
-This starts the server on **http://127.0.0.1:8000** and opens your default browser.
+`run_local.py` automatically sets `LOCAL_MODE=true`, finds an available port (defaults to 8000), starts the server bound strictly to `127.0.0.1`, and launches your default web browser.
 
-**Alternative (no auto-open browser):**
-
-```bash
-python -m uvicorn backend.app:app --host 127.0.0.1 --port 8000
-```
-
-Then open http://127.0.0.1:8000 manually.
-
-To stop the server, press **Ctrl+C** in the terminal.
+To stop the server, press **Ctrl+C** in the terminal window.
 
 ---
 
-## Step 6: First use in the browser
+## Using the Application & Saving Credentials
 
-1. **Step 1 — Dispatcher & Key:** Choose provider (e.g. Gmail or **Dry Run** for testing), enter sender email, display name, and app password. Click **Save to .env (Local)**.
-2. **Step 2 — Import:** Upload Excel/CSV or paste recipients.
-3. **Step 3 — Template:** Personalize subject/body, preview, optional test email.
-4. **Step 4 — Dispatch:** Set throttle delay and launch the batch; download the report when finished.
-
-After a restart, Step 1 fields should pre-fill from `.env`.
+1. **Step 1 — Dispatcher & Key:**
+   - Select your provider (e.g., **Gmail**, **Outlook**, **Custom SMTP**, or **Safe Dry Run**).
+   - Enter your Sender Email, Display Name, and 16-character App Password.
+   - Click **Save to .env (Local)**.
+   - Your credentials are stored in `.env` on your computer. When you restart the app, they will automatically be pre-filled!
+2. **Step 2 — Import Recipients:** Upload your Excel (`.xlsx`) or CSV file.
+3. **Step 3 — Personalization & Template:** Compose your subject and body using dynamic tags (e.g. `{{Name}}`). Review the live preview and spam score.
+4. **Step 4 — Dispatch & Verification:** Set sending delay and launch. Download the delivery verification report when completed.
 
 ---
 
-## Updating to the latest version
+## Updating to the Latest Version
 
 ```bash
 cd omnimail-dispatcher
-git checkout local-deployment
-git pull origin local-deployment
+git pull origin main
 pip install -r requirements.txt
 ```
 
-Your local `.env` is unchanged by `git pull`.
+Your private `.env` file is excluded in `.gitignore` and remains intact when pulling updates.
 
 ---
 
 ## Troubleshooting
 
-| Problem | What to try |
-|---------|-------------|
-| **`python` not found** | Install Python from [python.org](https://www.python.org/downloads/) and enable “Add Python to PATH”. On macOS/Linux try `python3` instead of `python`. |
-| **Port 8000 already in use** | Stop the other process, or run: `python -m uvicorn backend.app:app --host 127.0.0.1 --port 8080` and open http://127.0.0.1:8080 |
-| **Save to .env fails** | Run the app from the repo root (folder that contains `backend/` and `run_local.py`). Ensure the folder is writable. |
-| **SMTP / login errors** | Confirm App Password, 2FA on the mail account, and that `SENDER_EMAIL` matches the account that owns the app password. |
-| **Credentials not pre-filling** | Confirm you are on `local-deployment`, `.env` exists in the repo root, and you restarted the server after saving. |
+| Problem | Solution |
+|---------|----------|
+| **`python` not recognized** | Download Python from [python.org](https://www.python.org/downloads/) and ensure "Add Python to PATH" is checked. |
+| **Port 8000 already in use** | `run_local.py` automatically detects occupied ports and switches to the next free port (e.g., 8001). |
+| **Missing modules error** | Run `pip install -r requirements.txt`. |
+| **SMTP / Authentication errors** | For Gmail, generate a 16-character App Password at [Google Account > Security > App Passwords](https://myaccount.google.com/apppasswords). Normal Google account passwords will be rejected by SMTP. |
 
 ---
 
-## Security (local branch only)
+## Security Architecture
 
-- Run this branch only on **your own PC** (`127.0.0.1`).
-- Do **not** deploy `local-deployment` to a public server with real keys in `.env`.
-- For shared/cloud deployment with zero key storage on disk, use **`main`** and [DEPLOYMENT_RENDER.md](DEPLOYMENT_RENDER.md).
+- **Local Mode (`LOCAL_MODE=true`):** Activated by `run_local.py` or `start_local.bat`. Binds only to localhost (`127.0.0.1`). Credentials are saved in `.env` for user convenience.
+- **Cloud Mode (`LOCAL_MODE=false`):** Default for production/cloud deployments. Enforces strict **Zero-Retention**: keys are held in volatile browser session memory only and are never saved to server disk or exposed over network APIs.
