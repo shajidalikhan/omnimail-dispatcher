@@ -35,15 +35,18 @@
 
 ## Quick Start Guide
 
-**New install from GitHub?** See **[LOCAL_DEPLOYMENT.md](LOCAL_DEPLOYMENT.md)** for clone → `.env` → run steps on the `local-deployment` branch.
+Detailed setup steps for Windows, macOS, and Linux are in **[LOCAL_DEPLOYMENT.md](LOCAL_DEPLOYMENT.md)**.
 
 ### Option 1: Double-Click Launcher (Windows)
-Double-click `start_dispatcher.bat` in this folder.
+Double-click `start_local.bat` (or `start_dispatcher.bat`) in the root folder.
 
 ### Option 2: Terminal / Command Prompt
 ```bash
-cd "d:\Study Material\Computer Science and Application\M.Tech\Semester 3\TA Work\email dispatcher"
-python start_dispatcher.py
+# 1. Install dependencies
+pip install -r requirements.txt
+
+# 2. Run local server
+python run_local.py
 ```
 The program will start the local server and automatically open your default browser at `http://127.0.0.1:8000`.
 

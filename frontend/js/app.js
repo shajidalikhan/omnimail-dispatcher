@@ -251,6 +251,25 @@ function applyLocalModeUi(isLocal) {
   document.querySelectorAll(".local-mode-only").forEach((el) => {
     el.classList.toggle("hidden-panel", !isLocal);
   });
+  document.querySelectorAll(".cloud-mode-only").forEach((el) => {
+    el.classList.toggle("hidden-panel", isLocal);
+  });
+}
+
+// CLOUD MODE: Remember credentials only in the browser tab session memory (Zero-Retention)
+function saveCredentialsSession() {
+  const dType = document.getElementById("dispatcher-type").value;
+  const sEmail = document.getElementById("sender-email").value.trim();
+  const sName = document.getElementById("sender-name").value.trim();
+  const sKey = document.getElementById("sender-key").value.trim();
+
+  sessionStorage.setItem("omnimail_dispatcher", dType);
+  sessionStorage.setItem("omnimail_email", sEmail);
+  sessionStorage.setItem("omnimail_name", sName);
+  sessionStorage.setItem("omnimail_key", sKey);
+
+  alert("🔒 Zero-Retention Active!\n\nYour Mail Key is stored ONLY in your current browser tab's volatile memory.\nIt will NEVER be written to the server's disk or database, and will automatically vanish when you close this browser tab.");
+  updateSummaryView();
 }
 
 // LOCAL MODE: Save credentials to server .env file for persistence across restarts

@@ -29,9 +29,9 @@ dispatch_report_*.csv
 demo_recipients.csv
 demo_recipients.xlsx
 
-# Windows local launcher (render uses Procfile instead)
-start_dispatcher.bat
-start_dispatcher.py
+# Windows local launcher (tracked so users downloading the repository have 1-click execution)
+# start_local.bat
+# start_dispatcher.bat
 
 # Local sample data folder
 sample_data/
