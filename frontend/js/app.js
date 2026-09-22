@@ -782,6 +782,9 @@ function startPollingStatus() {
         if (status.failed_count > 0) {
           document.getElementById("retry-failed-btn").style.display = "inline-flex";
         }
+        if (typeof loadUsageHistory === "function") {
+          loadUsageHistory();
+        }
       }
     } catch (err) {
       console.error("Polling error:", err);
@@ -863,3 +866,158 @@ function escapeHtml(text) {
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#039;");
 }
+
+// ── USAGE HISTORY & DEVELOPER LOGS ──────────────────────────────────────────
+let allHistoryRecords = [];
+
+function openUsageHistoryModal() {
+  const modal = document.getElementById("history-modal");
+  if (modal) {
+    modal.classList.add("active");
+    loadUsageHistory();
+  }
+}
+
+function closeUsageHistoryModal() {
+  const modal = document.getElementById("history-modal");
+  if (modal) {
+    modal.classList.remove("active");
+  }
+}
+
+function switchHistoryTab(tab) {
+  const isUser = tab === "user";
+  const btnUser = document.getElementById("tab-btn-user-history");
+  const btnDev = document.getElementById("tab-btn-dev-logs");
+  const panelUser = document.getElementById("history-tab-user-content");
+  const panelDev = document.getElementById("history-tab-dev-content");
+
+  if (btnUser) btnUser.classList.toggle("active", isUser);
+  if (btnDev) btnDev.classList.toggle("active", !isUser);
+  if (panelUser) panelUser.classList.toggle("active", isUser);
+  if (panelDev) panelDev.classList.toggle("active", !isUser);
+
+  if (!isUser) {
+    loadDeveloperLogs();
+  }
+}
+
+async function loadUsageHistory() {
+  const tbody = document.getElementById("history-table-body");
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">Fetching dispatch history...</td></tr>';
+  try {
+    const res = await fetch("/api/logs/history");
+    const data = await res.json();
+    const summary = data.summary || {};
+    allHistoryRecords = data.records || [];
+
+    const statBatches = document.getElementById("hist-stat-batches");
+    const statSent = document.getElementById("hist-stat-sent");
+    const statFailed = document.getElementById("hist-stat-failed");
+    const statRate = document.getElementById("hist-stat-rate");
+
+    if (statBatches) statBatches.textContent = summary.total_batches ?? 0;
+    if (statSent) statSent.textContent = summary.total_emails_sent ?? 0;
+    if (statFailed) statFailed.textContent = summary.total_emails_failed ?? 0;
+    if (statRate) statRate.textContent = (summary.success_rate_percent ?? 100) + "%";
+
+    renderHistoryTable(allHistoryRecords);
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger">Failed to load history: ${escapeHtml(err.message)}</td></tr>`;
+  }
+}
+
+function renderHistoryTable(records) {
+  const tbody = document.getElementById("history-table-body");
+  if (!tbody) return;
+  if (!records || records.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No dispatch history recorded yet. Complete a test email or batch dispatch to see records.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = records.map(r => {
+    let pillClass = "success";
+    const status = (r.Status || "").toUpperCase();
+    if (status.includes("FAILED") || status.includes("AUTH_ERROR")) pillClass = "failed";
+    else if (status.includes("PARTIAL")) pillClass = "partial";
+    else if (status.includes("STOPPED")) pillClass = "stopped";
+
+    const reportBtn = r.Report_File
+      ? `<a href="/api/logs/history/report/${encodeURIComponent(r.Job_ID)}" class="btn btn-outline btn-xs" download>
+           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+           Download
+         </a>`
+      : '<span class="text-muted">&mdash;</span>';
+
+    return `
+      <tr>
+        <td>
+          <strong>${escapeHtml(r.Job_ID)}</strong><br>
+          <span class="text-muted" style="font-size: 0.75rem;">${escapeHtml(r.Timestamp)}</span>
+        </td>
+        <td><span class="badge ${r.Activity_Type === 'Batch Dispatch' ? 'badge-primary' : 'badge-secondary'}">${escapeHtml(r.Activity_Type || 'Dispatch')}</span></td>
+        <td>${escapeHtml(r.Dispatcher || 'N/A')}</td>
+        <td><span class="code-font" style="font-size: 0.75rem;">${escapeHtml(r.Sender_Email || 'N/A')}</span></td>
+        <td><strong>${escapeHtml(r.Sent_Count || '0')}</strong> / ${escapeHtml(r.Total_Recipients || '0')}</td>
+        <td><span class="status-pill ${pillClass}">${escapeHtml(r.Status || 'UNKNOWN')}</span></td>
+        <td>${reportBtn}</td>
+      </tr>
+    `;
+  }).join("");
+}
+
+function filterHistoryTable() {
+  const query = (document.getElementById("hist-search-input")?.value || "").toLowerCase().trim();
+  if (!query) {
+    renderHistoryTable(allHistoryRecords);
+    return;
+  }
+  const filtered = allHistoryRecords.filter(r => {
+    return (
+      (r.Job_ID || "").toLowerCase().includes(query) ||
+      (r.Dispatcher || "").toLowerCase().includes(query) ||
+      (r.Sender_Email || "").toLowerCase().includes(query) ||
+      (r.Activity_Type || "").toLowerCase().includes(query) ||
+      (r.Status || "").toLowerCase().includes(query)
+    );
+  });
+  renderHistoryTable(filtered);
+}
+
+async function loadDeveloperLogs() {
+  const term = document.getElementById("dev-log-terminal");
+  if (!term) return;
+  term.innerHTML = "<code>Fetching latest developer logs...</code>";
+  try {
+    const res = await fetch("/api/logs/developer");
+    const data = await res.json();
+    const lines = data.lines || [];
+    if (lines.length === 0) {
+      term.innerHTML = "<code>[No log events recorded yet]</code>";
+      return;
+    }
+    term.innerHTML = lines.map(line => {
+      let cls = "info";
+      if (line.includes("[ERROR]")) cls = "error";
+      else if (line.includes("[WARNING]")) cls = "warning";
+      return `<div class="dev-log-line ${cls}">${escapeHtml(line)}</div>`;
+    }).join("");
+    term.scrollTop = term.scrollHeight;
+  } catch (err) {
+    term.innerHTML = `<div class="dev-log-line error">Failed to load developer logs: ${escapeHtml(err.message)}</div>`;
+  }
+}
+
+async function clearDeveloperLogs() {
+  if (!confirm("Are you sure you want to clear the developer log buffer?")) return;
+  try {
+    const res = await fetch("/api/logs/developer/clear", { method: "POST" });
+    const data = await res.json();
+    alert(data.message || "Developer log buffer cleared.");
+    loadDeveloperLogs();
+  } catch (err) {
+    alert("Error clearing developer logs: " + err.message);
+  }
+}
+

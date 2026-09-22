@@ -20,9 +20,11 @@ ENV/
 Thumbs.db
 desktop.ini
 
-# ─── Exported Reports (generated at runtime) ────────────────────────────────
+# ─── Exported Reports & Persistent Logs (runtime only) ────────────────────────
 dispatch_report_*.xlsx
 dispatch_report_*.csv
+logs/
+reports/
 
 # ─── Local / Dev-only files (NOT needed for deployment) ─────────────────────
 # Demo / test recipient files

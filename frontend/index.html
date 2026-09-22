@@ -24,9 +24,15 @@
         <p class="brand-subtitle">Smart Personalization, High-Deliverability Queue & Live Verification</p>
       </div>
     </div>
-    <div class="header-status-badge" id="dispatcher-quick-badge">
-      <span class="status-dot"></span>
-      <span id="header-dispatcher-name">Gmail SMTP</span>
+    <div class="header-right-actions">
+      <button type="button" class="btn btn-secondary btn-sm history-nav-btn" onclick="openUsageHistoryModal()" title="View past dispatch runs and system logs">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="10"/></svg>
+        Usage History & Logs
+      </button>
+      <div class="header-status-badge" id="dispatcher-quick-badge">
+        <span class="status-dot"></span>
+        <span id="header-dispatcher-name">Gmail SMTP</span>
+      </div>
     </div>
   </header>
 
@@ -520,6 +526,10 @@
             <a href="/api/export-results?format=csv" class="btn btn-outline" download>
               Download CSV (.csv)
             </a>
+            <button type="button" class="btn btn-secondary" onclick="openUsageHistoryModal()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="10"/></svg>
+              Past Logs & Reports
+            </button>
           </div>
         </div>
       </div>
@@ -555,6 +565,111 @@
         <button type="button" class="btn btn-primary" id="modal-send-btn" onclick="dispatchTestEmail()">
           Send Test Email
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Usage History & Activity Logs Modal -->
+  <div class="modal-overlay" id="history-modal">
+    <div class="modal-card modal-large">
+      <div class="modal-header">
+        <div class="modal-title-with-badge">
+          <h3>Activity & Usage History</h3>
+          <span class="security-badge" style="background: rgba(99,102,241,0.15); color: #818cf8;">Persistent Audit</span>
+        </div>
+        <button class="modal-close-btn" onclick="closeUsageHistoryModal()">&times;</button>
+      </div>
+
+      <!-- Tab Switcher -->
+      <div class="history-tab-bar">
+        <button type="button" class="history-tab-btn active" id="tab-btn-user-history" onclick="switchHistoryTab('user')">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
+          User Dispatch History
+        </button>
+        <button type="button" class="history-tab-btn" id="tab-btn-dev-logs" onclick="switchHistoryTab('dev')">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+          Developer System Log
+        </button>
+      </div>
+
+      <div class="modal-body history-modal-body">
+        <!-- USER HISTORY TAB CONTENT -->
+        <div id="history-tab-user-content" class="history-tab-panel active">
+          <!-- Summary Metrics Cards -->
+          <div class="history-stats-grid">
+            <div class="hist-stat-card">
+              <span class="hist-stat-label">Total Batches Run</span>
+              <span class="hist-stat-value" id="hist-stat-batches">0</span>
+            </div>
+            <div class="hist-stat-card">
+              <span class="hist-stat-label">Emails Dispatched</span>
+              <span class="hist-stat-value" id="hist-stat-sent" style="color: #22c55e;">0</span>
+            </div>
+            <div class="hist-stat-card">
+              <span class="hist-stat-label">Failed Emails</span>
+              <span class="hist-stat-value" id="hist-stat-failed" style="color: #ef4444;">0</span>
+            </div>
+            <div class="hist-stat-card">
+              <span class="hist-stat-label">Success Rate</span>
+              <span class="hist-stat-value" id="hist-stat-rate">100%</span>
+            </div>
+          </div>
+
+          <!-- Actions & Search Bar -->
+          <div class="history-actions-bar">
+            <div class="search-input-wrapper">
+              <input type="text" id="hist-search-input" class="form-control" placeholder="Search by Job ID, Sender, Provider..." oninput="filterHistoryTable()" />
+            </div>
+            <div class="btn-group">
+              <button type="button" class="btn btn-secondary btn-sm" onclick="loadUsageHistory()" title="Refresh records">
+                Refresh
+              </button>
+              <a href="/api/logs/history/export" class="btn btn-outline btn-sm" download>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Export History (CSV)
+              </a>
+            </div>
+          </div>
+
+          <!-- History Table -->
+          <div class="history-table-container">
+            <table class="history-table" id="history-records-table">
+              <thead>
+                <tr>
+                  <th>Job ID / Time</th>
+                  <th>Activity</th>
+                  <th>Provider</th>
+                  <th>Sender</th>
+                  <th>Sent / Total</th>
+                  <th>Status</th>
+                  <th>Archived Report</th>
+                </tr>
+              </thead>
+              <tbody id="history-table-body">
+                <tr><td colspan="7" class="text-center text-muted">Loading dispatch history...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- DEVELOPER LOGS TAB CONTENT -->
+        <div id="history-tab-dev-content" class="history-tab-panel">
+          <div class="dev-log-header-bar">
+            <span class="dev-log-path">Log File: <code>logs/app_events.log</code></span>
+            <div class="btn-group">
+              <button type="button" class="btn btn-secondary btn-sm" onclick="loadDeveloperLogs()">Refresh</button>
+              <button type="button" class="btn btn-danger btn-sm" onclick="clearDeveloperLogs()">Clear Buffer</button>
+              <a href="/api/logs/developer?download=true" class="btn btn-outline btn-sm" download>Download .log</a>
+            </div>
+          </div>
+          <div class="dev-log-terminal" id="dev-log-terminal">
+            <code>Loading developer system logs...</code>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeUsageHistoryModal()">Close</button>
       </div>
     </div>
   </div>

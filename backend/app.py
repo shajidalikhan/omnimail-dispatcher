@@ -16,6 +16,17 @@ from backend.config import (
     save_credentials_to_env,
     get_auth_settings,
 )
+from backend.logging_service import (
+    log_info,
+    log_warning,
+    log_error,
+    get_recent_developer_logs,
+    get_dispatch_history,
+    get_history_summary_stats,
+    DEV_LOG_PATH,
+    HISTORY_CSV_PATH,
+    REPORTS_DIR,
+)
 from backend.data_ingestion import (
     parse_uploaded_file,
     parse_raw_text,
@@ -263,6 +274,7 @@ def save_credentials(payload: SaveCredentialsRequest):
         smtp_port=payload.custom_smtp_port or 587,
         use_tls=payload.custom_use_tls if payload.custom_use_tls is not None else True,
     )
+    log_info(f"Credentials saved to .env for provider [{payload.dispatcher_type}], sender: {payload.sender_email}")
     return {
         "success": True,
         "message": "Settings saved to local .env file. Your credentials will be pre-filled automatically on the next restart."
@@ -289,6 +301,11 @@ async def upload_dataset(request: Request, file: UploadFile = File(...)):
         session_data["selected_email_col"] = selected_col
         session_data["validation_summary"] = summary
 
+        log_info(
+            f"[DATA INGESTION] Uploaded '{file.filename}': {len(records)} rows, "
+            f"detected email column: '{email_col}', valid: {summary.get('valid_count', 0)}"
+        )
+
         return {
             "filename": file.filename,
             "total_rows": len(records),
@@ -299,6 +316,7 @@ async def upload_dataset(request: Request, file: UploadFile = File(...)):
             "sample_rows": records[:5]
         }
     except Exception as e:
+        log_error(f"[DATA INGESTION] Failed to process upload '{file.filename}': {e}")
         raise HTTPException(status_code=400, detail=f"Failed to process file: {str(e)}")
 
 @app.post("/api/paste")
@@ -319,6 +337,11 @@ def paste_dataset(request: Request, payload: PasteDataRequest):
         session_data["selected_email_col"] = selected_col
         session_data["validation_summary"] = summary
 
+        log_info(
+            f"[DATA INGESTION] Pasted text processed: {len(records)} rows, "
+            f"detected email column: '{email_col}', valid: {summary.get('valid_count', 0)}"
+        )
+
         return {
             "total_rows": len(records),
             "columns": columns,
@@ -328,6 +351,7 @@ def paste_dataset(request: Request, payload: PasteDataRequest):
             "sample_rows": records[:5]
         }
     except Exception as e:
+        log_error(f"[DATA INGESTION] Failed to parse pasted data: {e}")
         raise HTTPException(status_code=400, detail=str(e))
 
 @app.post("/api/set-email-column")
@@ -617,6 +641,79 @@ def export_results(request: Request, format: str = "xlsx"):
         media_type=media_type,
         headers={"Content-Disposition": f'attachment; filename="{filename}"'}
     )
+
+
+# ── LOGGING & USAGE AUDIT ROUTES ─────────────────────────────────────────────
+
+@app.get("/api/logs/history")
+def get_usage_history():
+    """Returns JSON list of historical dispatch runs and overall statistics."""
+    return {
+        "summary": get_history_summary_stats(),
+        "records": get_dispatch_history(),
+    }
+
+
+@app.get("/api/logs/history/export")
+def export_usage_history_csv():
+    """Download the complete dispatch_history.csv file."""
+    if not HISTORY_CSV_PATH.exists():
+        raise HTTPException(status_code=404, detail="No dispatch history recorded yet.")
+    return Response(
+        content=HISTORY_CSV_PATH.read_bytes(),
+        media_type="text/csv",
+        headers={"Content-Disposition": 'attachment; filename="dispatch_history.csv"'}
+    )
+
+
+@app.get("/api/logs/history/report/{job_id}")
+def download_archived_report(job_id: str):
+    """Download an archived XLSX or CSV report file for a past dispatch job."""
+    # Sanitize job_id to prevent directory traversal
+    clean_id = Path(job_id).name
+    target_xlsx = REPORTS_DIR / f"dispatch_report_{clean_id}.xlsx"
+    target_csv = REPORTS_DIR / f"dispatch_report_{clean_id}.csv"
+
+    if target_xlsx.exists():
+        return Response(
+            content=target_xlsx.read_bytes(),
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={"Content-Disposition": f'attachment; filename="{target_xlsx.name}"'}
+        )
+    elif target_csv.exists():
+        return Response(
+            content=target_csv.read_bytes(),
+            media_type="text/csv",
+            headers={"Content-Disposition": f'attachment; filename="{target_csv.name}"'}
+        )
+    else:
+        raise HTTPException(status_code=404, detail=f"No archived report found for job '{clean_id}'")
+
+
+@app.get("/api/logs/developer")
+def get_developer_logs_api(download: bool = False):
+    """Retrieve recent lines from app_events.log or download the full log file."""
+    if not DEV_LOG_PATH.exists():
+        if download:
+            raise HTTPException(status_code=404, detail="No developer log exists yet.")
+        return {"lines": ["[No developer log entries recorded yet]"]}
+
+    if download:
+        return Response(
+            content=DEV_LOG_PATH.read_bytes(),
+            media_type="text/plain",
+            headers={"Content-Disposition": 'attachment; filename="app_events.log"'}
+        )
+    return {"lines": get_recent_developer_logs(max_lines=300)}
+
+
+@app.post("/api/logs/developer/clear")
+def clear_developer_log_api():
+    """Clears the developer log file buffer."""
+    if DEV_LOG_PATH.exists():
+        DEV_LOG_PATH.write_text("", encoding="utf-8")
+    log_info("Developer log file cleared via admin command.")
+    return {"success": True, "message": "Developer log cleared."}
 
 
 # Mount frontend directory

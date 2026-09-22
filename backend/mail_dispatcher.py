@@ -12,6 +12,13 @@ from pathlib import Path
 
 from backend.config import DISPATCHER_PRESETS
 from backend.template_service import render_template
+from backend.logging_service import (
+    log_info,
+    log_warning,
+    log_error,
+    record_dispatch_event,
+    archive_dispatch_report,
+)
 
 class DispatcherJob:
     def __init__(self):
@@ -183,8 +190,25 @@ def send_single_test_email(
     attachments: List[Dict[str, Any]] = None
 ) -> Dict[str, Any]:
     """Sends a single live test email or simulates test send to verify settings."""
+    test_start = time.time()
+    test_id = f"TEST-{datetime.datetime.now().strftime('%Y%m%d-%H%M%S')}"
+
     if dispatcher_type == "dry_run":
         att_note = f" (with {len(attachments)} attachments)" if attachments else ""
+        elapsed = time.time() - test_start
+        log_info(f"[TEST EMAIL] Simulated dry-run test to {test_recipient_email}")
+        record_dispatch_event(
+            job_id=test_id,
+            activity_type="Single Test Email",
+            dispatcher="dry_run",
+            sender_email=sender_email or "dry_run_simulator",
+            total_recipients=1,
+            sent_count=1,
+            failed_count=0,
+            duration_seconds=elapsed,
+            status="SUCCESS (DRY-RUN)",
+            report_file=""
+        )
         return {
             "success": True,
             "message": f"[DRY-RUN] Test email simulated successfully for {test_recipient_email}{att_note}",
@@ -204,11 +228,39 @@ def send_single_test_email(
         )
         server.send_message(msg)
         server.quit()
+        elapsed = time.time() - test_start
+        log_info(f"[TEST EMAIL] Successfully sent live test email to {test_recipient_email} via [{dispatcher_type}]")
+        record_dispatch_event(
+            job_id=test_id,
+            activity_type="Single Test Email",
+            dispatcher=dispatcher_type,
+            sender_email=sender_email,
+            total_recipients=1,
+            sent_count=1,
+            failed_count=0,
+            duration_seconds=elapsed,
+            status="SUCCESS",
+            report_file=""
+        )
         return {
             "success": True,
             "message": f"Test email successfully dispatched to {test_recipient_email}"
         }
     except Exception as e:
+        elapsed = time.time() - test_start
+        log_error(f"[TEST EMAIL] Failed to send test email to {test_recipient_email}: {e}")
+        record_dispatch_event(
+            job_id=test_id,
+            activity_type="Single Test Email",
+            dispatcher=dispatcher_type,
+            sender_email=sender_email,
+            total_recipients=1,
+            sent_count=0,
+            failed_count=1,
+            duration_seconds=elapsed,
+            status="FAILED",
+            report_file=""
+        )
         return {
             "success": False,
             "message": f"Failed to send test email: {str(e)}"
@@ -246,6 +298,11 @@ def start_batch_dispatch_job(
     def run_worker():
         nonlocal sender_key
         server = None
+        start_time = time.time()
+        log_info(
+            f"[BATCH START] Job {job.job_id} launched for {len(recipients)} recipients "
+            f"via [{dispatcher_type}] (sender: {sender_email}, delay: {delay_seconds}s)"
+        )
         job.logs.append({
             "timestamp": datetime.datetime.now().strftime("%H:%M:%S"),
             "level": "INFO",
@@ -257,6 +314,8 @@ def start_batch_dispatch_job(
             try:
                 server = get_smtp_connection(dispatcher_type, sender_email, sender_key, custom_server, custom_port, use_tls)
             except Exception as e:
+                elapsed = time.time() - start_time
+                log_error(f"[BATCH AUTH ERROR] Connection failed for {job.job_id}: {e}")
                 job.logs.append({
                     "timestamp": datetime.datetime.now().strftime("%H:%M:%S"),
                     "level": "ERROR",
@@ -264,6 +323,18 @@ def start_batch_dispatch_job(
                 })
                 job.is_running = False
                 job.completed_at = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                record_dispatch_event(
+                    job_id=job.job_id,
+                    activity_type="Batch Dispatch",
+                    dispatcher=dispatcher_type,
+                    sender_email=sender_email,
+                    total_recipients=job.total_count,
+                    sent_count=0,
+                    failed_count=job.total_count,
+                    duration_seconds=elapsed,
+                    status="AUTH_ERROR",
+                    report_file=""
+                )
                 # Zero-Retention: Wipe key immediately on error
                 sender_key = ""
                 return
@@ -366,21 +437,60 @@ def start_batch_dispatch_job(
 
         job.is_running = False
         job.completed_at = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        duration = time.time() - start_time
+
+        status = "COMPLETED"
+        if job.should_stop:
+            status = "STOPPED"
+        elif job.failed_count == job.total_count and job.total_count > 0:
+            status = "FAILED"
+        elif job.failed_count > 0:
+            status = "PARTIAL"
+
+        report_file = ""
+        try:
+            report_file = archive_dispatch_report(job.job_id, job.results)
+        except Exception as arc_err:
+            log_error(f"Failed to archive report for {job.job_id}: {arc_err}")
+
+        try:
+            record_dispatch_event(
+                job_id=job.job_id,
+                activity_type="Batch Dispatch",
+                dispatcher=dispatcher_type,
+                sender_email=sender_email,
+                total_recipients=job.total_count,
+                sent_count=job.sent_count,
+                failed_count=job.failed_count,
+                duration_seconds=duration,
+                status=status,
+                report_file=report_file
+            )
+        except Exception as hist_err:
+            log_error(f"Failed to record dispatch history for {job.job_id}: {hist_err}")
+
         job.logs.append({
             "timestamp": datetime.datetime.now().strftime("%H:%M:%S"),
             "level": "INFO",
-            "message": f"Job finished. Sent: {job.sent_count}, Failed: {job.failed_count}"
+            "message": f"Job finished ({status}). Sent: {job.sent_count}, Failed: {job.failed_count}. Report: {report_file or 'None'}"
         })
+        log_info(
+            f"[BATCH FINISHED] Job {job.job_id} | Status: {status} | "
+            f"Sent: {job.sent_count}/{job.total_count} | Failed: {job.failed_count} | "
+            f"Duration: {duration:.1f}s | Report: {report_file}"
+        )
 
     thread = threading.Thread(target=run_worker, daemon=True)
     job.worker_thread = thread
     thread.start()
 
 def stop_current_job(session_id: str = "default"):
+    log_info(f"[JOB CONTROL] Stop signal sent for session '{session_id}'")
     get_job(session_id).should_stop = True
 
 def toggle_pause_job(session_id: str = "default") -> bool:
     job = get_job(session_id)
     job.is_paused = not job.is_paused
+    log_info(f"[JOB CONTROL] Pause toggled to {job.is_paused} for session '{session_id}'")
     return job.is_paused
 
